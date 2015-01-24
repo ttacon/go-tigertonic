@@ -1,6 +1,8 @@
 package tigertonic
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -91,6 +93,34 @@ func (mux *TrieServeMux) add(method string, paths []string, handler http.Handler
 		mux.paths[paths[0]] = NewTrieServeMux()
 	}
 	mux.paths[paths[0]].add(method, paths[1:], handler, pattern)
+}
+
+func (mux *TrieServeMux) Remove(method string, path string) error {
+	return mux.remove(method, strings.Split(path[1:], "/"))
+}
+
+func (mux *TrieServeMux) remove(method string, paths []string) error {
+	fmt.Println("removing: ", paths)
+	if len(paths) == 0 {
+		return errors.New("failed to find specified handler")
+	}
+
+	v, ok := mux.paths[paths[0]]
+	if !ok {
+		return errors.New("failed to find specified handler")
+	}
+
+	if len(paths) > 1 {
+		err := v.remove(method, paths[1:])
+		if err != nil {
+			// dont delete anything unless we find the exact path
+			return err
+		}
+	}
+	if len(v.paths) == 0 {
+		delete(mux.paths, paths[0])
+	}
+	return nil
 }
 
 // find recursively searches for a URL pattern in the trie, strips
